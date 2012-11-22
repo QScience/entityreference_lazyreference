@@ -48,6 +48,10 @@ class EntityReference_SelectionHandler_Generic implements EntityReference_Select
         'type' => 'none',
       )
     );
+    
+    if (!isset($field['settings']['handler_settings']['lazy_relation'])) {
+      $field['settings']['handler_settings']['lazy_relation'] = FALSE;
+    }
 
     if (!empty($entity_info['entity keys']['bundle'])) {
       $bundles = array();
@@ -55,9 +59,19 @@ class EntityReference_SelectionHandler_Generic implements EntityReference_Select
         $bundles[$bundle_name] = $bundle_info['label'];
       }
 
+      $form['lazy_relation'] = array(
+        '#type' => 'checkboxes',
+        '#options' => array('lazy_relation' => 'Lazy relation'),
+        '#default_value' => $field['settings']['handler_settings']['lazy_relation'],
+//        '#size' => 6,
+//        '#multiple' => TRUE,
+        '#description' => t('If selected, referenced entity and reference will be created after the creation of referencing entity. Only title will be provided for the new entity. Works only for nodes!'),
+//        '#element_validate' => array('_entityreference_element_validate_filter'),
+      );
+      
       $form['target_bundles'] = array(
         '#type' => 'checkboxes',
-        '#title' => t('Target bundles'),
+        '#title' => t('Target bundleis'),
         '#options' => $bundles,
         '#default_value' => $field['settings']['handler_settings']['target_bundles'],
         '#size' => 6,
