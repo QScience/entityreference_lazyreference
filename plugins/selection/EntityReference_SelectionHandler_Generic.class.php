@@ -40,7 +40,7 @@ class EntityReference_SelectionHandler_Generic implements EntityReference_Select
    */
   public static function settingsForm($field, $instance) {
     $entity_info = entity_get_info($field['settings']['target_type']);
-
+    
     // Merge-in default values.
     $field['settings']['handler_settings'] += array(
       'target_bundles' => array(),
@@ -49,8 +49,8 @@ class EntityReference_SelectionHandler_Generic implements EntityReference_Select
       )
     );
     
-    if (!isset($field['settings']['handler_settings']['lazy_relation'])) {
-      $field['settings']['handler_settings']['lazy_relation'] = FALSE;
+    if (!isset($field['settings']['handler_settings']['lazy_reference'])) {
+      $field['settings']['handler_settings']['lazy_reference'] = FALSE;
     }
 
     if (!empty($entity_info['entity keys']['bundle'])) {
@@ -59,10 +59,10 @@ class EntityReference_SelectionHandler_Generic implements EntityReference_Select
         $bundles[$bundle_name] = $bundle_info['label'];
       }
 
-      $form['lazy_relation'] = array(
+      $form['lazy_reference'] = array(
         '#type' => 'checkboxes',
-        '#options' => array('lazy_relation' => 'Lazy relation'),
-        '#default_value' => $field['settings']['handler_settings']['lazy_relation'],
+        '#options' => array('lazy_reference' => 'Lazy reference'),
+        '#default_value' => $field['settings']['handler_settings']['lazy_reference'],
 //        '#size' => 6,
 //        '#multiple' => TRUE,
         '#description' => t('If selected, referenced entity and reference will be created after the creation of referencing entity. Only title will be provided for the new entity. Works only for nodes!'),
@@ -223,9 +223,22 @@ class EntityReference_SelectionHandler_Generic implements EntityReference_Select
    */
   public function validateAutocompleteInput($input, &$element, &$form_state, $form) {
       $entities = $this->getReferencableEntities($input, '=', 6);
+      
+      // Getting lazy reference setting information.
+      $lazy_reference = FALSE;
+      if (isset($this->field['settings']['handler_settings']['lazy_reference']['lazy_reference'])) {
+        $lr = $this->field['settings']['handler_settings']['lazy_reference']['lazy_reference'];
+        if ($lr !== 0) {
+          $lazy_reference = TRUE;
+        }
+      }
+      
       if (empty($entities)) {
-        // Error if there are no entities available for a required field.
-        form_error($element, t('There are no entities matching "%value"', array('%value' => $input)));
+        // Only showing error if lazy reference is turned off.
+        if (!$lazy_reference) {
+          // Error if there are no entities available for a required field.
+          form_error($element, t('There are no entities matching "%value"', array('%value' => $input)));
+        }
       }
       elseif (count($entities) > 5) {
         // Error if there are more than 5 matching entities.
