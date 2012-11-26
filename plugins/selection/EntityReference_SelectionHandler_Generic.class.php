@@ -222,7 +222,15 @@ class EntityReference_SelectionHandler_Generic implements EntityReference_Select
    * Implements EntityReferenceHandler::validateAutocompleteInput().
    */
   public function validateAutocompleteInput($input, &$element, &$form_state, $form) {
-      $entities = $this->getReferencableEntities($input, '=', 6);
+      $referencable_entities = $this->getReferencableEntities($input, '=', 6);
+      $bundle = NULL;
+      $entities = array();
+      if (!empty($referencable_entities)) {
+        foreach($referencable_entities as $bun => $ent) {
+          $bundle = $bun;
+          $entities = $ent;
+        }
+      }
       
       // Getting lazy reference setting information.
       $lazy_reference = FALSE;
