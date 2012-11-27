@@ -207,6 +207,84 @@ function entityreference_field_load($entity_type, $entities, $field, $instances,
 }
 
 /**
+ * Implements hook_form_alter(). 
+ */
+
+function entityreference_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id === 'paper_node_form') {
+    $form['actions']['submit']['#submit'][] = '_entityreference_paper_form_submit';
+  }
+}
+
+function _entityreference_paper_form_submit($form, &$form_state) {
+  global $user;
+  
+  $paper_node_id = $form_state['nid'];
+  $targets = $form_state['values']['author_reference'][$form_state['values']['language']];
+  foreach ($targets as $number => $target) {
+    if (is_numeric($number) && isset($target['target_id']) && is_array($target['target_id'])) {
+      $language = $form_state['values']['language'];
+      
+      $node = new stdClass();
+      $node->title = $target['target_id']['title'];
+      $split = explode(" ", $node->title);
+      $first_name = isset($split[0]) ? $split[0] : 'unknown';
+      $last_name = isset($split[1]) ? implode(" ", array_splice($split, 1)) : '';
+      
+      $node->first_name = array(
+        $language => array(
+          array(
+            'value' => $first_name
+          )
+        )
+      );
+      $node->last_name = array(
+        $language => array(
+          array(
+            'value' => $last_name
+          )
+        )
+      );
+      $node->type = "author";
+      node_object_prepare($node); // Sets some defaults. Invokes hook_prepare() and hook_node_prepare().
+      $node->language = LANGUAGE_NONE; // Or e.g. 'en' if locale is enabled
+      $node->uid = $user->uid;
+      $node->status = 1; //(1 or 0): published or not
+      $node->promote = 0; //(1 or 0): promoted to front page
+      $node->comment = 1; //2 = comments on, 1 = comments off
+
+      // Term reference (taxonomy) field
+//      $node->field_product_tid[$node->language][]['tid'] = $form_state['values']['a taxonomy term id'];
+
+      // Entity reference field
+//      $node->field_customer_nid[$node->language][] = array(
+//        'target_id' => $form_state['values']['entity id'],
+//        'target_type' => 'node',
+//      );
+      // 'node' is default,
+      // Other possible values are "user" and  "taxonomy_term"
+
+      $node = node_submit($node); // Prepare node for saving
+      node_save($node);
+      
+      $paper = node_load($paper_node_id);
+//      dvm($paper->author_reference);
+      if (!isset($paper->author_reference[$paper->language])) {
+        $paper->author_reference[$paper->language] = array();
+      }
+      $paper->author_reference[$paper->language][] = array(
+        'target_id' => $node->nid,
+      );
+//      dvm($paper->author_reference);
+      node_save($paper);
+      
+//      dvm( "Node (". $node->title .") with nid " . $node->nid . " saved!\n");
+//      $form_state['redirect']  = 'SOME WHERE';
+    }
+  }
+}
+
+/**
  * Implements hook_field_validate().
  */
 function entityreference_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
@@ -892,6 +970,14 @@ function _entityreference_autocomplete_validate($element, &$form_state, $form) {
       $instance = field_info_instance($element['#entity_type'], $field_name, $element['#bundle']);
       $handler = entityreference_get_selection_handler($field, $instance);
       $value = $handler->validateAutocompleteInput($element['#value'], $element, $form_state, $form);
+      // If lazy reference is active, and target is not found, we have to store the string
+      // to be able to create the node after saving the referencing entity.
+      if ($value == NULL) {
+        $value = array(
+          'target_id' => NULL,
+          'title' => $element['#value'],
+        );
+      }
     }
   }
   // Update the value of this element so the field can validate the product IDs.
