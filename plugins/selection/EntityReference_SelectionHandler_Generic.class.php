@@ -50,7 +50,7 @@ class EntityReference_SelectionHandler_Generic implements EntityReference_Select
     );
     
     if (!isset($field['settings']['handler_settings']['lazy_reference'])) {
-      $field['settings']['handler_settings']['lazy_reference'] = FALSE;
+      $field['settings']['handler_settings']['lazy_reference']['lazy_reference'] = FALSE;
     }
 
     if (!empty($entity_info['entity keys']['bundle'])) {
