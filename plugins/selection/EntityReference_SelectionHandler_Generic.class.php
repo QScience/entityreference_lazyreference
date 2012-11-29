@@ -71,7 +71,7 @@ class EntityReference_SelectionHandler_Generic implements EntityReference_Select
       
       $form['target_bundles'] = array(
         '#type' => 'checkboxes',
-        '#title' => t('Target bundleis'),
+        '#title' => t('Target bundles'),
         '#options' => $bundles,
         '#default_value' => $field['settings']['handler_settings']['target_bundles'],
         '#size' => 6,

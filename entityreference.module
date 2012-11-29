@@ -662,6 +662,12 @@ function _entityreference_element_validate_filter(&$element, &$form_state) {
 function _entityreference_field_settings_validate($form, &$form_state) {
   // Store the new values in the form state.
   $field = $form['#field'];
+  if (isset($form_state['values']['field']['settings']['handler_settings']['lazy_reference'])) {
+    $is_lazyreference = $form_state['values']['field']['settings']['handler_settings']['lazy_reference']['lazy_reference'] === 'lazy_reference';
+    if (count($form_state['values']['field']['settings']['handler_settings']['target_bundles']) !== 1 && $is_lazyreference) {
+      form_set_error('lazy_reference', t('Lazy reference only available if exactly 1 target bundle is selected.'));
+    }
+  }
   if (isset($form_state['values']['field'])) {
     $field['settings'] = $form_state['values']['field']['settings'];
   }
