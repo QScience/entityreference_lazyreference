@@ -52,6 +52,10 @@ class EntityReference_SelectionHandler_Generic implements EntityReference_Select
     if (!isset($field['settings']['handler_settings']['lazy_reference'])) {
       $field['settings']['handler_settings']['lazy_reference']['lazy_reference'] = FALSE;
     }
+    
+    if (!isset($field['settings']['handler_settings']['unique_reference'])) {
+      $field['settings']['handler_settings']['unique_reference']['unique_reference'] = FALSE;
+    }
 
     if (!empty($entity_info['entity keys']['bundle'])) {
       $bundles = array();
@@ -66,6 +70,16 @@ class EntityReference_SelectionHandler_Generic implements EntityReference_Select
 //        '#size' => 6,
 //        '#multiple' => TRUE,
         '#description' => t('If selected, referenced entity and reference will be created after the creation of referencing entity. Only title will be provided for the new entity. Works only for nodes!'),
+//        '#element_validate' => array('_entityreference_element_validate_filter'),
+      );
+      
+      $form['unique_reference'] = array(
+        '#type' => 'checkboxes',
+        '#options' => array('unique_reference' => 'Unique reference'),
+        '#default_value' => $field['settings']['handler_settings']['unique_reference'],
+//        '#size' => 6,
+//        '#multiple' => TRUE,
+        '#description' => t('If selected, every referenced entity can be assigned only once, duplicates will be ignored.'),
 //        '#element_validate' => array('_entityreference_element_validate_filter'),
       );
       
@@ -222,52 +236,53 @@ class EntityReference_SelectionHandler_Generic implements EntityReference_Select
    * Implements EntityReferenceHandler::validateAutocompleteInput().
    */
   public function validateAutocompleteInput($input, &$element, &$form_state, $form) {
-      $referencable_entities = $this->getReferencableEntities($input, '=', 6);
-      $bundle = NULL;
-      $entities = array();
-      if (!empty($referencable_entities)) {
-        foreach($referencable_entities as $bun => $ent) {
-          $bundle = $bun;
-          $entities = $ent;
-        }
+    $referencable_entities = $this->getReferencableEntities($input, '=', 6);
+    $bundle = NULL;
+    $entities = array();
+    if (!empty($referencable_entities)) {
+      foreach($referencable_entities as $bun => $ent) {
+        $bundle = $bun;
+        $entities = $ent;
       }
-      
-      // Getting lazy reference setting information.
-      $lazy_reference = FALSE;
-      if (isset($this->field['settings']['handler_settings']['lazy_reference']['lazy_reference'])) {
-        $lr = $this->field['settings']['handler_settings']['lazy_reference']['lazy_reference'];
-        if ($lr !== 0) {
-          $lazy_reference = TRUE;
-        }
+    }
+    
+    // Getting lazy reference setting information.
+    $lazy_reference = FALSE;
+    if (isset($this->field['settings']['handler_settings']['lazy_reference']['lazy_reference'])) {
+      if ($this->field['settings']['handler_settings']['lazy_reference']['lazy_reference'] === 'lazy_reference') {
+        $lazy_reference = TRUE;
       }
-      
-      if (empty($entities)) {
-        // Only showing error if lazy reference is turned off.
-        if (!$lazy_reference) {
-          // Error if there are no entities available for a required field.
-          form_error($element, t('There are no entities matching "%value"', array('%value' => $input)));
-        }
+    }
+
+    if (empty($entities)) {
+      // Only showing error if lazy reference is turned off.
+      if (!$lazy_reference) {
+        // Error if there are no entities available for a required field.
+        form_error($element, t('There are no entities matching "%value"', array('%value' => $input)));
+      } else {
+        return NULL;
       }
-      elseif (count($entities) > 5) {
-        // Error if there are more than 5 matching entities.
-        form_error($element, t('Many entities are called %value. Specify the one you want by appending the id in parentheses, like "@value (@id)"', array(
-          '%value' => $input,
-          '@value' => $input,
-          '@id' => key($entities),
-        )));
+    }
+    elseif (count($entities) > 5) {
+      // Error if there are more than 5 matching entities.
+      form_error($element, t('Many entities are called %value. Specify the one you want by appending the id in parentheses, like "@value (@id)"', array(
+        '%value' => $input,
+        '@value' => $input,
+        '@id' => key($entities),
+      )));
+    }
+    elseif (count($entities) > 1) {
+      // More helpful error if there are only a few matching entities.
+      $multiples = array();
+      foreach ($entities as $id => $name) {
+        $multiples[] = $name . ' (' . $id . ')';
       }
-      elseif (count($entities) > 1) {
-        // More helpful error if there are only a few matching entities.
-        $multiples = array();
-        foreach ($entities as $id => $name) {
-          $multiples[] = $name . ' (' . $id . ')';
-        }
-        form_error($element, t('Multiple entities match this reference; "%multiple"', array('%multiple' => implode('", "', $multiples))));
-      }
-      else {
-        // Take the one and only matching entity.
-        return key($entities);
-      }
+      form_error($element, t('Multiple entities match this reference; "%multiple"', array('%multiple' => implode('", "', $multiples))));
+    }
+    else {
+      // Take the one and only matching entity.
+      return key($entities);
+    }
   }
 
   /**

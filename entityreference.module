@@ -236,7 +236,7 @@ function _entityreference_paper_form_submit($form, &$form_state) {
     foreach ($form_state['values'][$field][$language] as $number => $target) {
       if (is_numeric($number) && isset($target['target_id']) && is_array($target['target_id'])) {
         $lazy_node = new stdClass();
-        $lazy_node->title = $target['target_id']['title'];
+        $lazy_node->title = trim($target['target_id']['title']);
         $lazy_node->nid = FALSE;
         $targets_to_create[$field][] = $lazy_node;
       }
@@ -1030,14 +1030,28 @@ function entityreference_field_widget_form(&$form, &$form_state, $field, $instan
 }
 
 function _entityreference_autocomplete_validate($element, &$form_state, $form) {
+  static $inputs = array();
+  $element_type = $element['#field_name'];
+  $language = $element['#language'];
+  
+  $is_unique_reference = FALSE;
+    if (isset($form_state['field'][$element_type][$language]['field']['settings']['handler_settings']['unique_reference']['unique_reference'])) {
+      if ($form_state['field'][$element_type][$language]['field']['settings']['handler_settings']['unique_reference']['unique_reference'] === 'unique_reference') {
+        $is_unique_reference = TRUE;
+      }
+    }
+  
   // If a value was entered into the autocomplete...
   $value = '';
+  $string_value = '';
   if (!empty($element['#value'])) {
     // Take "label (entity id)', match the id from parenthesis.
-    if (preg_match("/.+\((\d+)\)/", $element['#value'], $matches)) {
-      $value = $matches[1];
+    if (preg_match("/(.+)\((\d+)\)/", $element['#value'], $matches)) {
+      $value = $matches[2];
+      $string_value = trim($matches[1]);
     }
     else {
+      $string_value = trim($element['#value']);
       // Try to get a match from the input string when the user didn't use the
       // autocomplete but filled in a value manually.
       $field = field_info_field($element['#field_name']);
@@ -1054,6 +1068,14 @@ function _entityreference_autocomplete_validate($element, &$form_state, $form) {
           'target_id' => NULL,
           'title' => $element['#value'],
         );
+      }
+    }
+    if ($is_unique_reference) {
+      if (isset($inputs[$element_type]) && in_array($string_value, $inputs[$element_type])) {
+        form_error($element, t('Unique reference is turned on. You cannot reference twice on one entity.'));
+      }
+      else {
+        $inputs[$element_type][] = $string_value;
       }
     }
   }
