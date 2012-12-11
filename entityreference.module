@@ -278,8 +278,8 @@ function _entityreference_paper_form_submit($form, &$form_state) {
   $node = node_load($paper_node_id);
   
   foreach($targets_to_create as $type => $lazy_nodes) {
-    if (!isset($node->$type[$node->language])) {
-      $node->$type[$node->language] = array();
+    if (!isset($node->{$type}[$node->language])) {
+      $node->{$type}[$node->language] = array();
     }
     foreach ($lazy_nodes as $lazy_node) {
       $node->{$type}[$node->language][] = array(
@@ -288,57 +288,6 @@ function _entityreference_paper_form_submit($form, &$form_state) {
     }
   }
   node_save($node);
-
-  // **********************************************************
-  // **********************************************************
-//  $targets = $form_state['values']['author_reference'][$form_state['values']['language']];
-//  foreach ($targets as $number => $target) {
-//    if (is_numeric($number) && isset($target['target_id']) && is_array($target['target_id'])) {
-//      
-//      
-//      $node = new stdClass();
-//      $node->title = $target['target_id']['title'];
-//      $split = explode(" ", $node->title);
-//      $first_name = isset($split[0]) ? $split[0] : 'unknown';
-//      $last_name = isset($split[1]) ? implode(" ", array_splice($split, 1)) : '';
-//      
-//      $node->first_name = array(
-//        $language => array(
-//          array(
-//            'value' => $first_name
-//          )
-//        )
-//      );
-//      $node->last_name = array(
-//        $language => array(
-//          array(
-//            'value' => $last_name
-//          )
-//        )
-//      );
-//      $node->type = "author";
-//      node_object_prepare($node); // Sets some defaults. Invokes hook_prepare() and hook_node_prepare().
-//      $node->language = LANGUAGE_NONE; // Or e.g. 'en' if locale is enabled
-//      $node->uid = $user->uid;
-//      $node->status = 1; //(1 or 0): published or not
-//      $node->promote = 0; //(1 or 0): promoted to front page
-//      $node->comment = 1; //2 = comments on, 1 = comments off
-//
-//
-//      $node = node_submit($node); // Prepare node for saving
-//      node_save($node);
-//      
-//      $paper = node_load($paper_node_id);
-//      if (!isset($paper->author_reference[$paper->language])) {
-//        $paper->author_reference[$paper->language] = array();
-//      }
-//      $paper->author_reference[$paper->language][] = array(
-//        'target_id' => $node->nid,
-//      );
-//      node_save($paper);
-//      
-//    }
-//  }
 }
 
 function _entityreference_get_fields_for_lazyreference($form_state) {
