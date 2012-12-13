@@ -993,9 +993,10 @@ function _entityreference_autocomplete_validate($element, &$form_state, $form) {
   // If a value was entered into the autocomplete...
   $value = '';
   $string_value = '';
+  $element['#value'] = trim($element['#value']);
   if (!empty($element['#value'])) {
     // Take "label (entity id)', match the id from parenthesis.
-    if (preg_match("/(.+)\((\d+)\)/", $element['#value'], $matches)) {
+    if (preg_match("/(.+)\((\d+)\)$/", $element['#value'], $matches)) {
       $value = $matches[2];
       $string_value = trim($matches[1]);
     }
