@@ -261,12 +261,12 @@ function _entityreference_paper_form_submit($form, &$form_state) {
         $node->title = $lazy_node->title;
         // Using only 1 bundle now. It is not so good.
         $node->type = $bundle_to_fieldtype[$type][0];
-        node_object_prepare($node); // Sets some defaults. Invokes hook_prepare() and hook_node_prepare().
-        $node->language = LANGUAGE_NONE; // Or e.g. 'en' if locale is enabled
+        node_object_prepare($node);
+        $node->language = LANGUAGE_NONE;
         $node->uid = $user->uid;
-        $node->status = 1; //(1 or 0): published or not
-        $node->promote = 0; //(1 or 0): promoted to front page
-        $node->comment = 1; //2 = comments on, 1 = comments off
+        $node->status = 1;
+        $node->promote = 0;
+        $node->comment = 1;
 
         $node = node_submit($node); // Prepare node for saving
         node_save($node);
