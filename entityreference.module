@@ -211,23 +211,28 @@ function entityreference_field_load($entity_type, $entities, $field, $instances,
  */
 
 function entityreference_form_alter(&$form, &$form_state, $form_id) {
-  if ($form_id === 'paper_node_form') {
-    $form['actions']['submit']['#submit'][] = '_entityreference_paper_form_submit';
-  }
+  $form['actions']['submit']['#submit'][] = '_entityreference_form_submit';
 }
 
-function _entityreference_paper_form_submit($form, &$form_state) {
+function _entityreference_form_submit($form, &$form_state) {
   global $user;
+  
+  $lazyref_fields = _entityreference_get_fields_for_lazyreference($form_state);
+  if (count($lazyref_fields) == 0) return;
   
   $targets_to_create = array();
   $bundle_to_fieldtype = array();
   $paper_node_id = $form_state['nid'];
   $language = $form_state['values']['language'];
   
-  $lazyref_fields = _entityreference_get_fields_for_lazyreference($form_state);
-  
   // Collecting array of lazyreferenced entities for each type of reference.
   foreach($lazyref_fields as $field) {
+    $unique_titles = array();
+    $is_unique_reference = FALSE;
+    if (isset($form_state['field'][$field][$language]['field']['settings']['handler_settings']['unique_reference']['unique_reference'])
+            && $form_state['field'][$field][$language]['field']['settings']['handler_settings']['unique_reference']['unique_reference'] === 'unique_reference') {
+      $is_unique_reference = TRUE;
+    }
     // Collecting bundles to the given reference type.
     foreach ($form_state['field'][$field][$language]['field']['settings']['handler_settings']['target_bundles'] as $key => $val) {
       $bundle_to_fieldtype[$field][] = $val;
@@ -235,10 +240,14 @@ function _entityreference_paper_form_submit($form, &$form_state) {
     // Actually getting the values here.
     foreach ($form_state['values'][$field][$language] as $number => $target) {
       if (is_numeric($number) && isset($target['target_id']) && is_array($target['target_id'])) {
-        $lazy_node = new stdClass();
-        $lazy_node->title = trim($target['target_id']['title']);
-        $lazy_node->nid = FALSE;
-        $targets_to_create[$field][] = $lazy_node;
+        $title = trim($target['target_id']['title']);
+        if ($is_unique_reference === FALSE || !in_array($title, $unique_titles)) {
+          $lazy_node = new stdClass();
+          $lazy_node->title = $title;
+          $lazy_node->nid = FALSE;
+          $targets_to_create[$field][] = $lazy_node;
+          $unique_titles[] = $title;
+        }
       }
     }
   }
