@@ -211,92 +211,93 @@ function entityreference_field_load($entity_type, $entities, $field, $instances,
  */
 
 function entityreference_form_alter(&$form, &$form_state, $form_id) {
-  $form['actions']['submit']['#submit'][] = '_entityreference_form_submit';
+  $form['#submit'][] = '_entityreference_form_submit';
 }
 
 function _entityreference_form_submit($form, &$form_state) {
   global $user;
   
   $lazyref_fields = _entityreference_get_fields_for_lazyreference($form_state);
-  if (count($lazyref_fields) == 0) return;
+  if (count($lazyref_fields) != 0) {
   
-  $targets_to_create = array();
-  $bundle_to_fieldtype = array();
-  $paper_node_id = $form_state['nid'];
-  $language = $form_state['values']['language'];
-  
-  // Collecting array of lazyreferenced entities for each type of reference.
-  foreach($lazyref_fields as $field) {
-    $unique_titles = array();
-    $is_unique_reference = FALSE;
-    if (isset($form_state['field'][$field][$language]['field']['settings']['handler_settings']['unique_reference']['unique_reference'])
-            && $form_state['field'][$field][$language]['field']['settings']['handler_settings']['unique_reference']['unique_reference'] === 'unique_reference') {
-      $is_unique_reference = TRUE;
-    }
-    // Collecting bundles to the given reference type.
-    foreach ($form_state['field'][$field][$language]['field']['settings']['handler_settings']['target_bundles'] as $key => $val) {
-      $bundle_to_fieldtype[$field][] = $val;
-    }
-    // Actually getting the values here.
-    foreach ($form_state['values'][$field][$language] as $number => $target) {
-      if (is_numeric($number) && isset($target['target_id']) && is_array($target['target_id'])) {
-        $title = trim($target['target_id']['title']);
-        if ($is_unique_reference === FALSE || !in_array($title, $unique_titles)) {
-          $lazy_node = new stdClass();
-          $lazy_node->title = $title;
-          $lazy_node->nid = FALSE;
-          $targets_to_create[$field][] = $lazy_node;
-          $unique_titles[] = $title;
+    $targets_to_create = array();
+    $bundle_to_fieldtype = array();
+    $paper_node_id = $form_state['nid'];
+    $language = $form_state['values']['language'];
+
+    // Collecting array of lazyreferenced entities for each type of reference.
+    foreach($lazyref_fields as $field) {
+      $unique_titles = array();
+      $is_unique_reference = FALSE;
+      if (isset($form_state['field'][$field][$language]['field']['settings']['handler_settings']['unique_reference']['unique_reference'])
+              && $form_state['field'][$field][$language]['field']['settings']['handler_settings']['unique_reference']['unique_reference'] === 'unique_reference') {
+        $is_unique_reference = TRUE;
+      }
+      // Collecting bundles to the given reference type.
+      foreach ($form_state['field'][$field][$language]['field']['settings']['handler_settings']['target_bundles'] as $key => $val) {
+        $bundle_to_fieldtype[$field][] = $val;
+      }
+      // Actually getting the values here.
+      foreach ($form_state['values'][$field][$language] as $number => $target) {
+        if (is_numeric($number) && isset($target['target_id']) && is_array($target['target_id'])) {
+          $title = trim($target['target_id']['title']);
+          if ($is_unique_reference === FALSE || !in_array($title, $unique_titles)) {
+            $lazy_node = new stdClass();
+            $lazy_node->title = $title;
+            $lazy_node->nid = FALSE;
+            $targets_to_create[$field][] = $lazy_node;
+            $unique_titles[] = $title;
+          }
         }
       }
     }
-  }
-  
-  // Calling 
-  foreach($targets_to_create as $type => $lazy_nodes) {
-    foreach (module_implements('node_create_for_' . $type) as $module) {
-      foreach($lazy_nodes as $lazy_node) {
-        $nid = module_invoke($module, 'node_create_for_' . $type, $lazy_node->title, $language);
-        $lazy_node->nid = $nid;
-      }
-    }
-  }
-  
-  // Creating nodes automatically only from title info.
-  foreach($targets_to_create as $type => $lazy_nodes) {
-    foreach ($lazy_nodes as $lazy_node) {
-      if ($lazy_node->nid === FALSE) {
-        $node = new stdClass();
-        $node->title = $lazy_node->title;
-        // Using only 1 bundle now. It is not so good.
-        $node->type = $bundle_to_fieldtype[$type][0];
-        node_object_prepare($node);
-        $node->language = LANGUAGE_NONE;
-        $node->uid = $user->uid;
-        $node->status = 1;
-        $node->promote = 0;
-        $node->comment = 1;
 
-        $node = node_submit($node); // Prepare node for saving
-        node_save($node);
-        $lazy_node->nid = $node->nid;
+    // Calling 
+    foreach($targets_to_create as $type => $lazy_nodes) {
+      foreach (module_implements('node_create_for_' . $type) as $module) {
+        foreach($lazy_nodes as $lazy_node) {
+          $nid = module_invoke($module, 'node_create_for_' . $type, $lazy_node->title, $language);
+          $lazy_node->nid = $nid;
+        }
       }
     }
-  }
-  
-  $node = node_load($paper_node_id);
-  
-  foreach($targets_to_create as $type => $lazy_nodes) {
-    if (!isset($node->{$type}[$node->language])) {
-      $node->{$type}[$node->language] = array();
+
+    // Creating nodes automatically only from title info.
+    foreach($targets_to_create as $type => $lazy_nodes) {
+      foreach ($lazy_nodes as $lazy_node) {
+        if ($lazy_node->nid === FALSE) {
+          $node = new stdClass();
+          $node->title = $lazy_node->title;
+          // Using only 1 bundle now. It is not so good.
+          $node->type = $bundle_to_fieldtype[$type][0];
+          node_object_prepare($node);
+          $node->language = LANGUAGE_NONE;
+          $node->uid = $user->uid;
+          $node->status = 1;
+          $node->promote = 0;
+          $node->comment = 1;
+
+          $node = node_submit($node); // Prepare node for saving
+          node_save($node);
+          $lazy_node->nid = $node->nid;
+        }
+      }
     }
-    foreach ($lazy_nodes as $lazy_node) {
-      $node->{$type}[$node->language][] = array(
-        'target_id' => $lazy_node->nid,
-      );
+
+    $node = node_load($paper_node_id);
+
+    foreach($targets_to_create as $type => $lazy_nodes) {
+      if (!isset($node->{$type}[$node->language])) {
+        $node->{$type}[$node->language] = array();
+      }
+      foreach ($lazy_nodes as $lazy_node) {
+        $node->{$type}[$node->language][] = array(
+          'target_id' => $lazy_node->nid,
+        );
+      }
     }
+    node_save($node);
   }
-  node_save($node);
 }
 
 function _entityreference_get_fields_for_lazyreference($form_state) {
