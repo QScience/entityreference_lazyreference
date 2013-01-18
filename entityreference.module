@@ -301,12 +301,14 @@ function _entityreference_form_submit($form, &$form_state) {
 
 function _entityreference_get_fields_for_lazyreference($form_state) {
   $lazyref_fields = array();
-  foreach($form_state['field'] as $field_name => $lang) {
-    $is_entityreference = $form_state['field'][$field_name][$form_state['values']['language']]['field']['type'] == 'entityreference';
-    if ($is_entityreference) {
-      $is_lazyreference = $form_state['field'][$field_name][$form_state['values']['language']]['field']['settings']['handler_settings']['lazy_reference']['lazy_reference'] === 'lazy_reference';
-      if ($is_entityreference && $is_lazyreference) {
-        $lazyref_fields[] = $field_name;
+  if (isset($form_state['fields'])) {
+    foreach($form_state['field'] as $field_name => $lang) {
+      $is_entityreference = $form_state['field'][$field_name][$form_state['values']['language']]['field']['type'] == 'entityreference';
+      if ($is_entityreference) {
+        $is_lazyreference = $form_state['field'][$field_name][$form_state['values']['language']]['field']['settings']['handler_settings']['lazy_reference']['lazy_reference'] === 'lazy_reference';
+        if ($is_entityreference && $is_lazyreference) {
+          $lazyref_fields[] = $field_name;
+        }
       }
     }
   }
